@@ -12,6 +12,8 @@ import UserData from "../plugin/UserData";
 import Toast from "../plugin/Toast";
 import { CartContext } from "../plugin/Context";
 import apiInstance from "../../utils/axios";
+import Cookie from "js-cookie";
+import jwtDecode from "jwt-decode";
 
 function Index() {
   const [courses, setCourses] = useState([]);
@@ -36,8 +38,20 @@ function Index() {
     }
   };
 
+  const [role, setRole] = useState(null);
   useEffect(() => {
+    const token = Cookie.get("access_token");
+        if (token) {
+          try {
+            const decodedToken = jwtDecode(token);
+            console.log(decodedToken.role);
+            setRole(decodedToken.role); // Assuming 'role' exists in your JWT payload
+          } catch (error) {
+            console.error("Invalid token:", error);
+          }
+      }
     fetchCourse();
+    
   }, []);
 
   const addToCart = async (courseId, userId, price, country, cartId) => {
@@ -284,6 +298,7 @@ function Index() {
                         </div>
                       </div>
                       {/* Card Footer */}
+                      {Cookie.get("access_token") && role === "Student" &&(
                       <div className="card-footer">
                         <div className="row align-items-center g-0">
                           <div className="col">
@@ -315,6 +330,7 @@ function Index() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </div>
                   </div>
                 ))}

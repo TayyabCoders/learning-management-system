@@ -68,6 +68,32 @@ function Checkout() {
     event.target.form.submit();
   };
 
+  const handleCashOnDelivery = async () => {
+    setPaymentLoading(true);
+  
+    try {
+      const response = await apiInstance.post("payment/payment-sucess/", {
+        order_oid: order.oid,
+        payment_method: "COD",
+      });
+  
+      Toast().fire({
+        icon: "success",
+        title: response.data.message,
+      });
+  
+      navigate("/");
+    } catch (error) {
+      console.error("COD Error:", error);
+      Toast().fire({
+        icon: "error",
+        title: "Something went wrong!",
+      });
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+  
   return (
     <>
       <BaseHeader />
@@ -333,6 +359,13 @@ function Checkout() {
                             }}
                           />
                         </PayPalScriptProvider>
+                        <button
+                          onClick={handleCashOnDelivery}
+                          className="btn btn-lg btn-warning mt-2 w-100"
+                          disabled={paymentLoading}
+                        >
+                          {paymentLoading ? "Processing..." : "Cash on Delivery"}
+                        </button>
                       </div>
                       <p className="small mb-0 mt-2 text-center">
                         By proceeding to payment, you agree to these{" "}

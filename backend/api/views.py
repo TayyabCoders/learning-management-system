@@ -18,6 +18,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
 
 
 import random
@@ -26,6 +27,7 @@ import stripe
 import requests
 from datetime import datetime, timedelta
 from ast import literal_eval
+from shortuuid import ShortUUID
 
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -224,8 +226,8 @@ class CartListAPIView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        cart_id = self.kwargs['cart_id']
-        queryset = api_models.Cart.objects.filter(cart_id=cart_id)
+        user_id = self.kwargs['user_id']
+        queryset = api_models.Cart.objects.filter(user_id=user_id)
         return queryset
     
 
@@ -234,19 +236,19 @@ class CartItemDeleteAPIView(generics.DestroyAPIView):
     permission_classes = [AllowAny]
 
     def get_object(self):
-        cart_id = self.kwargs['cart_id']
+        user_id = self.kwargs['user_id']
         item_id = self.kwargs['item_id']
 
-        return api_models.Cart.objects.filter(cart_id=cart_id, id=item_id).first()
+        return api_models.Cart.objects.filter(user_id=user_id, id=item_id).first()
 
 class CartStatsAPIView(generics.RetrieveAPIView):
     serializer_class = api_serializer.CartSerializer
     permission_classes = [AllowAny]
-    lookup_field = 'cart_id'
+    lookup_field = 'user_id'
  
     def get_queryset(self):
-        cart_id = self.kwargs['cart_id']
-        queryset = api_models.Cart.objects.filter(cart_id=cart_id)
+        user_id = self.kwargs['user_id']
+        queryset = api_models.Cart.objects.filter(user_id=user_id)
         return queryset
     
     def get(self, request, *args, **kwargs):
@@ -279,8 +281,6 @@ class CartStatsAPIView(generics.RetrieveAPIView):
         return cart_item.total
     
 
-
-
 class CreateOrderAPIView(generics.CreateAPIView):
     serializer_class = api_serializer.CartOrderSerializer
     permission_classes = [AllowAny]
@@ -290,38 +290,53 @@ class CreateOrderAPIView(generics.CreateAPIView):
         full_name = request.data['full_name']
         email = request.data['email']
         country = request.data['country']
-        cart_id = request.data['cart_id']
         user_id = request.data['user_id']
 
-        if user_id != 0:
-            user = User.objects.get(id=user_id)
-        else:
-            user = None
+        user = User.objects.get(id=user_id) if user_id != 0 else None
 
-        cart_items = api_models.Cart.objects.filter(cart_id=cart_id)
+        # Check if an order exists for the user with status "Processing"
+        order = api_models.CartOrder.objects.filter(student=user).first()
+
+        if order and order.payment_status == "Processing":
+            # Update OID if payment_status is "Processing"
+            order.oid = ShortUUID().random(length=6)
+        else:
+            # Create a new order with a new OID
+            order = api_models.CartOrder.objects.create(
+                student=user,
+                full_name=full_name,
+                email=email,
+                country=country,
+                oid=ShortUUID().random(length=6)  # Generate new OID
+            )
+
+        cart_items = api_models.Cart.objects.filter(user_id=user_id)
 
         total_price = Decimal(0.00)
         total_tax = Decimal(0.00)
         total_initial_total = Decimal(0.00)
         total_total = Decimal(0.00)
 
-        order = api_models.CartOrder.objects.create(
-            full_name=full_name,
-            email=email,
-            country=country,
-            student=user
-        )
-
+        # Process Cart Items
         for c in cart_items:
-            api_models.CartOrderItem.objects.create(
+            # Check if order item already exists
+            order_item, item_created = api_models.CartOrderItem.objects.get_or_create(
                 order=order,
                 course=c.course,
-                price=c.price,
-                tax_fee=c.tax_fee,
-                total=c.total,
-                initial_total=c.total,
-                teacher=c.course.teacher
+                defaults={
+                    'price': c.price,
+                    'tax_fee': c.tax_fee,
+                    'total': c.total,
+                    'initial_total': c.total,
+                    'teacher': c.course.teacher,
+                    'oid': ShortUUID().random(length=6)  # Generate OID for new items
+                }
             )
+
+            # If order item exists, update its OID
+            if not item_created:
+                order_item.oid = ShortUUID().random(length=6)
+                order_item.save()
 
             total_price += Decimal(c.price)
             total_tax += Decimal(c.tax_fee)
@@ -340,11 +355,13 @@ class CreateOrderAPIView(generics.CreateAPIView):
 
 
 
+
 class CheckoutAPIView(generics.RetrieveAPIView):
     serializer_class = api_serializer.CartOrderSerializer
     permission_classes = [AllowAny]
     queryset = api_models.CartOrder.objects.all()
     lookup_field = 'oid'
+    
 
 
 class CouponApplyAPIView(generics.CreateAPIView):
@@ -443,81 +460,115 @@ class PaymentSuccessAPIView(generics.CreateAPIView):
 
     def create(self, request, *args, **kwargs):
         order_oid = request.data['order_oid']
-        session_id = request.data['session_id']
-        paypal_order_id = request.data['paypal_order_id']
+        # session_id = request.data['session_id']
+        # paypal_order_id = request.data['paypal_order_id']
+        # payment_method = request.data.get("payment_method")  # NEW: Get payment method
 
         order = api_models.CartOrder.objects.get(oid=order_oid)
         order_items = api_models.CartOrderItem.objects.filter(order=order)
+        user = order.student
+
+        # Check if the order is already processed
+        if order.payment_status == "Processing":
+            order.payment_status = "COD Pending"  # Update payment status
+            order.save()
+
+            # Notify the student
+            # api_models.Notification.objects.create(
+            #     user=order.student,
+            #     order=order,
+            #     type="Cash on Delivery Selected"
+            # )
+
+            # Notify the teachers & enroll student
+            for o in order_items:
+                api_models.Notification.objects.create(
+                    teacher=o.teacher,
+                    order=order,
+                    order_item=o,
+                    type="New Order",
+                )
+                api_models.EnrolledCourse.objects.create(
+                    course=o.course,
+                    user=order.student,
+                    teacher=o.teacher,
+                    order_item=o
+                )
+             # **Empty the cart for the user ONLY if the order is placed**
+            user_cart = api_models.Cart.objects.filter(user=user)
+            user_cart.delete()  # Delete the user's cart
+            return Response({"message": "Order placed with Cash on Delivery!"})
+        else:
+            return Response({"message": "Order already processed!"})
+
+        # # Paypal payment success
+        # if paypal_order_id != "null":
+        #     paypal_api_url = f"https://api-m.sandbox.paypal.com/v2/checkout/orders/{paypal_order_id}"
+        #     headers = {
+        #         'Content-Type': 'application/json',
+        #         'Authorization': f"Bearer {get_access_token(PAYPAL_CLIENT_ID, PAYPAL_SECRET_ID)}"
+        #     }
+        #     response = requests.get(paypal_api_url, headers=headers)
+        #     if response.status_code == 200:
+        #         paypal_order_data = response.json()
+        #         paypal_payment_status = paypal_order_data['status']
+        #         if paypal_payment_status == "COMPLETED":
+        #             if order.payment_status == "Processing":
+        #                 order.payment_status = "Paid"
+        #                 order.save()
+        #                 api_models.Notification.objects.create(user=order.student, order=order, type="Course Enrollment Completed")
+
+        #                 for o in order_items:
+        #                     api_models.Notification.objects.create(
+        #                         teacher=o.teacher,
+        #                         order=order,
+        #                         order_item=o,
+        #                         type="New Order",
+        #                     )
+        #                     api_models.EnrolledCourse.objects.create(
+        #                         course=o.course,
+        #                         user=order.student,
+        #                         teacher=o.teacher,
+        #                         order_item=o
+        #                     )
+
+        #                 return Response({"message": "Payment Successfull"})
+        #             else:
+        #                 return Response({"message": "Already Paid"})
+        #         else:
+        #             return Response({"message": "Payment Failed"})
+        #     else:
+        #         return Response({"message": "PayPal Error Occured"})
 
 
-        # Paypal payment success
-        if paypal_order_id != "null":
-            paypal_api_url = f"https://api-m.sandbox.paypal.com/v2/checkout/orders/{paypal_order_id}"
-            headers = {
-                'Content-Type': 'application/json',
-                'Authorization': f"Bearer {get_access_token(PAYPAL_CLIENT_ID, PAYPAL_SECRET_ID)}"
-            }
-            response = requests.get(paypal_api_url, headers=headers)
-            if response.status_code == 200:
-                paypal_order_data = response.json()
-                paypal_payment_status = paypal_order_data['status']
-                if paypal_payment_status == "COMPLETED":
-                    if order.payment_status == "Processing":
-                        order.payment_status = "Paid"
-                        order.save()
-                        api_models.Notification.objects.create(user=order.student, order=order, type="Course Enrollment Completed")
+        # # Stripe payment success
+        # if session_id != 'null':
+        #     session = stripe.checkout.Session.retrieve(session_id)
+        #     if session.payment_status == "paid":
+        #         if order.payment_status == "Processing":
+        #             order.payment_status = "Paid"
+        #             order.save()
 
-                        for o in order_items:
-                            api_models.Notification.objects.create(
-                                teacher=o.teacher,
-                                order=order,
-                                order_item=o,
-                                type="New Order",
-                            )
-                            api_models.EnrolledCourse.objects.create(
-                                course=o.course,
-                                user=order.student,
-                                teacher=o.teacher,
-                                order_item=o
-                            )
-
-                        return Response({"message": "Payment Successfull"})
-                    else:
-                        return Response({"message": "Already Paid"})
-                else:
-                    return Response({"message": "Payment Failed"})
-            else:
-                return Response({"message": "PayPal Error Occured"})
-
-
-        # Stripe payment success
-        if session_id != 'null':
-            session = stripe.checkout.Session.retrieve(session_id)
-            if session.payment_status == "paid":
-                if order.payment_status == "Processing":
-                    order.payment_status = "Paid"
-                    order.save()
-
-                    api_models.Notification.objects.create(user=order.student, order=order, type="Course Enrollment Completed")
-                    for o in order_items:
-                        api_models.Notification.objects.create(
-                            teacher=o.teacher,
-                            order=order,
-                            order_item=o,
-                            type="New Order",
-                        )
-                        api_models.EnrolledCourse.objects.create(
-                            course=o.course,
-                            user=order.student,
-                            teacher=o.teacher,
-                            order_item=o
-                        )
-                    return Response({"message": "Payment Successfull"})
-                else:
-                    return Response({"message": "Already Paid"})
-            else:
-                    return Response({"message": "Payment Failed"})
-            
+        #             api_models.Notification.objects.create(user=order.student, order=order, type="Course Enrollment Completed")
+        #             for o in order_items:
+        #                 api_models.Notification.objects.create(
+        #                     teacher=o.teacher,
+        #                     order=order,
+        #                     order_item=o,
+        #                     type="New Order",
+        #                 )
+        #                 api_models.EnrolledCourse.objects.create(
+        #                     course=o.course,
+        #                     user=order.student,
+        #                     teacher=o.teacher,
+        #                     order_item=o
+        #                 )
+        #             return Response({"message": "Payment Successfull"})
+        #         else:
+        #             return Response({"message": "Already Paid"})
+        #     else:
+        #             return Response({"message": "Payment Failed"})
+               
 class SearchCourseAPIView(generics.ListAPIView):
     serializer_class = api_serializer.CourseSerializer
     permission_classes = [AllowAny]
@@ -897,7 +948,7 @@ class TeacherBestSellingCourseAPIView(viewsets.ViewSet):
             sales = course.enrolledcourse_set.count()
 
             courses_with_total_price.append({
-                'course_image': course.image.url,
+                'course_image': course.image.url if course.image else None,  # Check if image exists
                 'course_title': course.title,
                 'revenue': revenue,
                 'sales': sales,

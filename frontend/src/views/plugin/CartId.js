@@ -1,26 +1,26 @@
+import Cookies from "js-cookie";
+
 function CartId() {
   const generateRandomString = () => {
     const length = 6;
     const characters = "1234567890";
     let randomString = "";
 
-    for(let i = 0; i < length; i++){
-        const randomIndex = Math.floor(Math.random() * characters.length) 
-        randomString += characters.charAt(randomIndex)
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      randomString += characters.charAt(randomIndex);
     }
 
-    localStorage.setItem('randomString', randomString)
+    Cookies.set("cartId", randomString, { expires: 1, path: "/" }); // Expires in 1 day
   };
 
-  const existingRandomString = localStorage.getItem("randomString");
+  const existingRandomString = Cookies.get("cartId");
 
-  if(!existingRandomString){
-    generateRandomString()
-  } else {
-    // pass
+  if (!existingRandomString) {
+    generateRandomString();
   }
 
-  return existingRandomString
+  return Cookies.get("cartId");
 }
 
-export default CartId
+export default CartId;

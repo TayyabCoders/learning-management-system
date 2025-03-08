@@ -13,6 +13,8 @@ import UserData from "../plugin/UserData";
 import Toast from "../plugin/Toast";
 import { CartContext } from "../plugin/Context";
 import apiInstance from "../../utils/axios";
+import Cookie from "js-cookie";
+import jwtDecode from "jwt-decode";
 
 function CourseDetail() {
   const [course, setCourse] = useState([]);
@@ -33,8 +35,18 @@ function CourseDetail() {
         setIsLoading();
       });
   };
-
+  const [role, setRole] = useState(null);
   useEffect(() => {
+    const token = Cookie.get("access_token");
+        if (token) {
+          try {
+            const decodedToken = jwtDecode(token);
+            console.log(decodedToken.role);
+            setRole(decodedToken.role); // Assuming 'role' exists in your JWT payload
+          } catch (error) {
+            console.error("Invalid token:", error);
+          }
+      }
     fetchCourse();
   }, []);
 
@@ -1321,6 +1333,7 @@ function CourseDetail() {
                               </div>
                             </div>
                             {/* Buttons */}
+                            {Cookie.get("access_token") && role === "Student" &&(
                             <div className="mt-3 d-sm-flex justify-content-sm-between ">
                               {addToCartBtn === "Add To Cart" && (
                                 <button
@@ -1386,7 +1399,8 @@ function CourseDetail() {
                                 <i className="fas fa-arrow-right"></i>
                               </Link>
                             </div>
-                          </div>
+                            )}s
+                          </div>  
                         </div>
                         {/* Video END */}
                         {/* Course info START */}

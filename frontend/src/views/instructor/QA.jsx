@@ -13,7 +13,7 @@ import UserData from "../plugin/UserData";
 
 function QA() {
   const [questions, setQuestions] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [selectedConversation, setSelectedConversation] = useState("");
   const lastElementRef = useRef();
   const [createMessage, setCreateMessage] = useState({
     title: "",
@@ -29,9 +29,9 @@ function QA() {
       });
   };
 
-  useEffect(() => {
-    fetchQuestions();
-  }, []);
+  // useEffect(() => {
+  //   fetchQuestions();
+  // }, []);
 
   const [ConversationShow, setConversationShow] = useState(false);
   const handleConversationClose = () => setConversationShow(false);
@@ -63,6 +63,7 @@ function QA() {
   };
 
   useEffect(() => {
+    fetchQuestions();
     if (lastElementRef.current) {
       lastElementRef.current.scrollIntoView({ behavior: "smooth" });
     }

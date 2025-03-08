@@ -1,7 +1,11 @@
-import React, { useContext, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useContext, useState,useEffect } from "react";
+import { Link, useNavigate, NavLink } from "react-router-dom";
 import { CartContext } from "../plugin/Context";
 import { useAuthStore } from "../../store/auth";
+import Cookie from "js-cookie";
+import jwtDecode from "jwt-decode";
+import apiInstance from "../../utils/axios";
+import { userId } from "../../utils/constants"
 
 function BaseHeader() {
     const [cartCount, setCartCount] = useContext(CartContext);
@@ -13,6 +17,32 @@ function BaseHeader() {
     };
 
     const [isLoggedIn, user] = useAuthStore((state) => [state.isLoggedIn, state.user]);
+
+    const [role, setRole] = useState(null);
+    useEffect(() => {
+        const token = Cookie.get("access_token");
+        if (token) {
+          try {
+            const decodedToken = jwtDecode(token);
+            console.log(decodedToken);
+            setRole(decodedToken.role); // Assuming 'role' exists in your JWT payload
+          } catch (error) {
+            console.error("Invalid token:", error);
+          }
+        }
+        const fetchCartCount = async () => {
+            if (isLoggedIn && userId) {
+                try {
+                    const { data } = await apiInstance.get(`course/cart-list/${userId}/`);
+                    setCartCount(data?.length || 0);
+                } catch (error) {
+                    console.error("Error fetching cart count:", error);
+                }
+            }
+        };
+
+        fetchCartCount();
+      }, [isLoggedIn, userId, setCartCount]);
 
     return (
         <div>
@@ -45,6 +75,7 @@ function BaseHeader() {
                                     <i className="fas fa-address-card"></i> About Us
                                 </Link>
                             </li>
+                        {Cookie.get("access_token") && role === "Teacher" && (
                             <li className="nav-item dropdown">
                                 <a
                                     className="nav-link dropdown-toggle"
@@ -111,6 +142,8 @@ function BaseHeader() {
                                     </li>
                                 </ul>
                             </li>
+                        )}
+                        {Cookie.get("access_token") && role === "Student" &&(
                             <li className="nav-item dropdown">
                                 <a
                                     className="nav-link dropdown-toggle"
@@ -123,41 +156,58 @@ function BaseHeader() {
                                 </a>
                                 <ul className="dropdown-menu">
                                     <li>
-                                        <Link className="dropdown-item" to={`/student/dashboard/`}>
-                                            {" "}
-                                            <i className="bi bi-grid-fill"></i> Dashboard
-                                        </Link>
+                                    <NavLink
+                                        className={({ isActive }) =>
+                                        isActive ? "dropdown-item active" : "dropdown-item"
+                                        }
+                                        to="/student/dashboard/"
+                                    >
+                                        <i className="bi bi-grid-fill"></i> Dashboard
+                                    </NavLink>
                                     </li>
                                     <li>
-                                        <Link className="dropdown-item" to={`/student/courses/`}>
-                                            {" "}
-                                            <i className="fas fa-shopping-cart"></i>My Courses
-                                        </Link>
-                                    </li>
-
-                                    <li>
-                                        <Link className="dropdown-item" to={`/student/wishlist/`}>
-                                            {" "}
-                                            <i className="fas fa-heart"></i> Wishlist{" "}
-                                        </Link>
+                                    <NavLink
+                                        className={({ isActive }) =>
+                                        isActive ? "dropdown-item active" : "dropdown-item"
+                                        }
+                                        to="/student/courses/"
+                                    >
+                                        <i className="fas fa-shopping-cart"></i> My Courses
+                                    </NavLink>
                                     </li>
                                     <li>
-                                        <Link
-                                            className="dropdown-item"
-                                            to={`/student/question-answer/`}
-                                        >
-                                            {" "}
-                                            <i className="fas fa-envelope"></i> Q/A{" "}
-                                        </Link>
+                                    <NavLink
+                                        className={({ isActive }) =>
+                                        isActive ? "dropdown-item active" : "dropdown-item"
+                                        }
+                                        to="/student/wishlist/"
+                                    >
+                                        <i className="fas fa-heart"></i> Wishlist
+                                    </NavLink>
                                     </li>
                                     <li>
-                                        <Link className="dropdown-item" to={`/student/profile/`}>
-                                            {" "}
-                                            <i className="fas fa-gear"></i> Profile & Settings
-                                        </Link>
+                                    <NavLink
+                                        className={({ isActive }) =>
+                                        isActive ? "dropdown-item active" : "dropdown-item"
+                                        }
+                                        to="/student/question-answer/"
+                                    >
+                                        <i className="fas fa-envelope"></i> Q/A
+                                    </NavLink>
+                                    </li>
+                                    <li>
+                                    <NavLink
+                                        className={({ isActive }) =>
+                                        isActive ? "dropdown-item active" : "dropdown-item"
+                                        }
+                                        to="/student/profile/"
+                                    >
+                                        <i className="fas fa-gear"></i> Profile & Settings
+                                    </NavLink>
                                     </li>
                                 </ul>
                             </li>
+                            )}
                         </ul>
                         <div className="d-flex" role="search">
                             <input

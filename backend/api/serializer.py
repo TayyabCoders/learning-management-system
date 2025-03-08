@@ -14,10 +14,12 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['full_name'] = user.full_name
         token['email'] = user.email
         token['username'] = user.username
+        token['role'] = user.role
         try:
             token['teacher_id'] = user.teacher.id
         except:
             token['teacher_id'] = 0
+            
 
 
         return token
@@ -28,7 +30,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['full_name', 'email', 'password', 'password2']
+        fields = ['full_name', 'email','role', 'password', 'password2']
 
     def validate(self, attr):
         if attr['password'] != attr['password2']:
@@ -40,13 +42,13 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User.objects.create(
             full_name=validated_data['full_name'],
             email=validated_data['email'],
+            role=validated_data['role'],
         )
 
         email_username, _ = user.email.split("@")
         user.username = email_username
         user.set_password(validated_data['password'])
         user.save()
-
         return user
     
     

@@ -18,21 +18,21 @@ function Earning() {
 
   useEffect(() => {
     useAxios()
-      .get(`teacher/summary/${UserData()?.user_id}/`)
+      .get(`teacher/summary/${UserData()?.teacher_id}/`)
       .then((res) => {
         console.log(res.data[0]);
         setStats(res.data[0]);
       });
 
     useAxios()
-      .get(`teacher/all-months-earning/${UserData()?.user_id}/`)
+      .get(`teacher/all-months-earning/${UserData()?.teacher_id}/`)
       .then((res) => {
         console.log(res.data);
         setEarning(res.data);
       });
 
     useAxios()
-      .get(`teacher/best-course-earning/${UserData()?.user_id}/`)
+      .get(`teacher/best-course-earning/${UserData()?.teacher_id}/`)
       .then((res) => {
         console.log(res.data);
         setBestSellingCourse(res.data);

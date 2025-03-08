@@ -7,6 +7,7 @@ import CartId from "./views/plugin/CartId";
 
 import MainWrapper from "./layouts/MainWrapper";
 import PrivateRoute from "./layouts/PrivateRoute";
+import PublicRoute from "./layouts/PublicRoute";
 
 import Register from "../src/views/auth/Register";
 import Login from "../src/views/auth/Login";
@@ -38,27 +39,33 @@ import Orders from "./views/instructor/Orders";
 import Coupon from "./views/instructor/Coupon";
 import TeacherNotification from "./views/instructor/TeacherNotification";
 import QA from "./views/instructor/QA";
+import QAS from "./views/student/QA";
 import ChangePassword from "./views/instructor/ChangePassword";
 import Profile from "./views/instructor/Profile";
 import CourseCreate from "./views/instructor/CourseCreate";
 import CourseEdit from "./views/instructor/CourseEdit";
+import { userId } from "./utils/constants";
+
 
 
 function App() {
   const [cartCount, setCartCount] = useState(0);
   const [profile, setProfile] = useState([]);
+  
 
   useEffect(() => {
-    apiInstance.get(`course/cart-list/${CartId()}/`).then((res) => {
+    if(userId){
+    apiInstance.get(`course/cart-list/${userId}/`).then((res) => {
       setCartCount(res.data?.length);
     });
+  }
 
     useAxios()
       .get(`user/profile/${UserData()?.user_id}/`)
       .then((res) => {
         setProfile(res.data);
       });
-  }, []);
+  }, [userId]);
 
   return (
     <CartContext.Provider value={[cartCount, setCartCount]}>
@@ -66,69 +73,74 @@ function App() {
         <BrowserRouter>
           <MainWrapper>
             <Routes>
+            <Route element={<PublicRoute />}>
               <Route path="/register/" element={<Register />} />
               <Route path="/login/" element={<Login />} />
-              <Route path="/logout/" element={<Logout />} />
               <Route path="/forgot-password/" element={<ForgotPassword />} />
               <Route
                 path="/create-new-password/"
                 element={<CreateNewPassword />}
               />
+            </Route>
+            <Route path="/logout/" element={<Logout />} />
 
               {/* Base Routes */}
               <Route path="/" element={<Index />} />
-              <Route path="/course-detail/:slug/" element={<CourseDetail />} />
-              <Route path="/cart/" element={<Cart />} />
-              <Route path="/checkout/:order_oid/" element={<Checkout />} />
-              <Route
-                path="/payment-success/:order_oid/"
-                element={<Success />}
-              />
-              <Route path="/search/" element={<Search />} />
-
+              <Route element={<PrivateRoute />}>
+                <Route path="/course-detail/:slug/" element={<CourseDetail />} />
+                <Route element={<PrivateRoute />}>
+                  <Route path="/cart/" element={<Cart />} />
+                  <Route path="/checkout/:order_oid/" element={<Checkout />} />
+                  <Route
+                    path="/payment-success/:order_oid/"
+                    element={<Success />}
+                  />
+                </Route>
+                <Route path="/search/" element={<Search />} />
+              </Route> 
               {/* Student Routes */}
-              <Route
+              {/* <Route
                 path="/student/dashboard/"
-                element={<StudentDashboard />}
+                element={ <PrivateRoute> <StudentDashboard /> </PrivateRoute>}
               />
               <Route path="/student/courses/" element={<StudentCourses />} />
               <Route
                 path="/student/courses/:enrollment_id/"
-                element={<StudentCourseDetail />}
+                element={<PrivateRoute> <StudentCourseDetail /> </PrivateRoute>}
               />
-              <Route path="/student/wishlist/" element={<Wishlist />} />
-              <Route path="/student/profile/" element={<StudentProfile />} />
+              <Route path="/student/wishlist/" element={<PrivateRoute> <Wishlist /> </PrivateRoute>} />
+              <Route path="/student/profile/" element={<PrivateRoute> <StudentProfile /> </PrivateRoute>} />
               <Route
                 path="/student/change-password/"
-                element={<StudentChangePassword />}
-              />
+                element={<PrivateRoute> <StudentChangePassword /> </PrivateRoute>}
+              /> */}
+              <Route path="/student" element={<PrivateRoute />}>
+                <Route path="dashboard" element={<StudentDashboard />} />
+                <Route path="courses" element={<StudentCourses />} />
+                <Route path="courses/:enrollment_id" element={<StudentCourseDetail />} />
+                <Route path="wishlist" element={<Wishlist />} />
+                <Route path="question-answer" element={<QAS />} />
+                <Route path="profile" element={<StudentProfile />} />
+                <Route path="change-password" element={<StudentChangePassword />} />
+              </Route>
 
               {/* Teacher Routes */}
-              <Route path="/instructor/dashboard/" element={<Dashboard />} />
-              <Route path="/instructor/courses/" element={<Courses />} />
-              <Route path="/instructor/reviews/" element={<Review />} />
-              <Route path="/instructor/students/" element={<Students />} />
-              <Route path="/instructor/earning/" element={<Earning />} />
-              <Route path="/instructor/orders/" element={<Orders />} />
-              <Route path="/instructor/coupon/" element={<Coupon />} />
-              <Route
-                path="/instructor/notifications/"
-                element={<TeacherNotification />}
-              />
-              <Route path="/instructor/question-answer/" element={<QA />} />
-              <Route
-                path="/instructor/change-password/"
-                element={<ChangePassword />}
-              />
-              <Route path="/instructor/profile/" element={<Profile />} />
-              <Route
-                path="/instructor/create-course/"
-                element={<CourseCreate />}
-              />
-              <Route
-                path="/instructor/edit-course/:course_id/"
-                element={<CourseEdit />}
-              />
+              <Route path="/instructor" element={<PrivateRoute />}>
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="courses" element={<Courses />} />
+                <Route path="reviews" element={<Review />} />
+                <Route path="students" element={<Students />} />
+                <Route path="earning" element={<Earning />} />
+                <Route path="orders" element={<Orders />} />
+                <Route path="coupon" element={<Coupon />} />
+                <Route path="notifications" element={<TeacherNotification />} />
+                <Route path="question-answer" element={<QA />} />
+                <Route path="change-password" element={<ChangePassword />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="create-course" element={<CourseCreate />} />
+                <Route path="edit-course/:course_id" element={<CourseEdit />} />
+             </Route>
+
             </Routes>
           </MainWrapper>
         </BrowserRouter>

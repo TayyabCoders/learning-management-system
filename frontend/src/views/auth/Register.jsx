@@ -10,6 +10,7 @@ import BaseFooter from "../partials/BaseFooter";
 function Register() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +21,7 @@ function Register() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { error } = await register(fullName, email, password, password2);
+    const { error } = await register(fullName, email, role, password, password2);
     if (error) {
       alert(error);
       setIsLoading(false);
@@ -86,6 +87,23 @@ function Register() {
                       required=""
                       onChange={(e) => setEmail(e.target.value)}
                     />
+                  </div>
+                  
+                  <div className="mb-3">
+                    <label htmlFor="role" className="form-label">
+                      Select Role
+                    </label>
+                    <select
+                      id="role"
+                      className="form-control"
+                      name="role"
+                      required
+                      onChange={(e) => setRole(e.target.value)}
+                    >
+                      <option value="">-- Select Role --</option>
+                      <option value="Student">Student</option>
+                      <option value="Teacher">Teacher</option>
+                    </select>
                   </div>
 
                   {/* Password */}

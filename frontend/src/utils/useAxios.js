@@ -18,8 +18,14 @@ const useAxios = () => {
     }
 
     const response = await getRefreshedToken(refreshToken);
-    setAuthUser(response.access, response.refresh);
-    req.headers.Authorization = `Bearer ${response.data?.access}`;
+    
+    if (response && response.data) {
+      setAuthUser(response.data.access, response.data.refresh);
+      req.headers.Authorization = `Bearer ${response.data.access}`;
+    } else {
+      console.error("Failed to refresh token:", response);
+    }
+    
     return req;
   });
 

@@ -20,20 +20,17 @@ function Cart() {
   });
   const fetchCartItem = async () => {
     try {
-      await apiInstance.get(`course/cart-list/${CartId()}/`).then((res) => {
-        console.log(res.data);
-        console.log("Cart item structure:", res.data[0]);
-        setCart(res.data);
-      });
+        await apiInstance.get(`/course/cart-list/${userId}/`).then((res) => {
+            setCart(res.data);
+        });
 
-      await apiInstance.get(`cart/stats/${CartId()}/`).then((res) => {
-        console.log(res.data);
-        setCartStats(res.data);
-      });
+        await apiInstance.get(`/cart/stats/${userId}/`).then((res) => {
+            setCartStats(res.data);
+        });
     } catch (error) {
-      console.log(error);
+        console.log(error);
     }
-  };
+};
 
   useEffect(() => {
     fetchCartItem();
@@ -43,20 +40,16 @@ function Cart() {
 
   const cartItemDelete = async (itemId) => {
     await apiInstance
-      .delete(`course/cart-item-delete/${CartId()}/${itemId}/`)
-      .then((res) => {
-        console.log(res.data);
-        fetchCartItem();
-        Toast().fire({
-          icon: "success",
-          title: "Cart Item Deleted",
+        .delete(`/course/cart-item-delete/${userId}/${itemId}/`)
+        .then((res) => {
+            fetchCartItem();
+            Toast().fire({
+                icon: "success",
+                title: "Cart Item Deleted",
+            });
         });
-        // Set cart count after adding to cart
-        apiInstance.get(`course/cart-list/${CartId()}/`).then((res) => {
-          setCartCount(res.data?.length);
-        });
-      });
-  };
+};
+
 
   const handleBioDataChange = (event) => {
     setBioData({
@@ -71,7 +64,7 @@ function Cart() {
     formdata.append("full_name", bioData.full_name);
     formdata.append("email", bioData.email);
     formdata.append("country", bioData.country);
-    formdata.append("cart_id", CartId());
+    // formdata.append("cart_id", CartId());
     formdata.append("user_id", userId);
 
     try {

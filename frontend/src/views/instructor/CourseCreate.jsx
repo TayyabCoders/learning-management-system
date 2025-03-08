@@ -149,6 +149,18 @@ function CourseCreate() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const userData = UserData();
+    const teacherId = parseInt(userData?.teacher_id);
+    
+    if (!teacherId) {
+        Swal.fire({
+            icon: "error",
+            title: "Authentication Error",
+            text: "Teacher ID not found. Please make sure you're logged in as a teacher."
+        });
+        return;
+    }
+
     const formdata = new FormData();
     formdata.append("title", course.title);
     formdata.append("image", course.image.file);
@@ -157,37 +169,29 @@ function CourseCreate() {
     formdata.append("price", course.price);
     formdata.append("level", course.level);
     formdata.append("language", course.language);
-    formdata.append("teacher", parseInt(UserData()?.teacher_id));
-    console.log(course.category);
-    if (course.file !== null || course.file !== "") {
-      formdata.append("file", course.file || "");
+    formdata.append("teacher", teacherId);  // Send as teacher_id to match model field
+    formdata.append("teacher_id", teacherId);  // Send as teacher_id to match model field
+
+    // Debug the formdata contents
+    for (let pair of formdata.entries()) {
+        console.log(pair[0] + ': ' + pair[1]);
     }
 
-    variants.forEach((variant, variantIndex) => {
-      Object.entries(variant).forEach(([key, value]) => {
-        console.log(`Key: ${key} = value: ${value}`);
-        formdata.append(
-          `variants[${variantIndex}][variant_${key}]`,
-          String(value)
-        );
-      });
-
-      variant.items.forEach((item, itemIndex) => {
-        Object.entries(item).forEach(([itemKey, itemValue]) => {
-          formdata.append(
-            `variants[${variantIndex}][items][${itemIndex}][${itemKey}]`,
-            itemValue
-          );
+    try {
+        const response = await useAxios().post(`teacher/course-create/`, formdata);
+        console.log("Response:", response.data);
+        Swal.fire({
+            icon: "success",
+            title: "Course Created Successfully"
         });
-      });
-    });
-
-    const response = await useAxios().post(`teacher/course-create/`, formdata);
-    console.log(response.data);
-    Swal.fire({
-      icon: "success",
-      title: "Course Created Successfully"
-    })
+    } catch (error) {
+        console.error("Error details:", error.response?.data);
+        Swal.fire({
+            icon: "error",
+            title: "Error Creating Course",
+            text: error.response?.data?.detail || "An unexpected error occurred"
+        });
+    }
   };
 
   return (

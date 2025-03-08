@@ -30,6 +30,7 @@ TEACHER_STATUS = (
 PAYMENT_STATUS = (
     ("Paid", "Paid"),
     ("Processing", "Processing"),
+    ("COD Pending", "COD Pending"),
     ("Failed", "Failed"),
 )
 
