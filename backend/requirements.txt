@@ -43,3 +43,4 @@ moviepy==1.0.3
 # django-adminer    ....for local
 # mysqlclient       ....for local
 PyMySQL==1.1.0 #for production
+setuptools #for production
