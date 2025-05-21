@@ -94,17 +94,13 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-    # 'default': {
-    #     'ENGINE': 'django.db.backends.sqlite3',
-    #     'NAME': BASE_DIR / 'db.sqlite3',
-    # }
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': os.getenv('MYSQL_DATABASE'),      # Railway provides this
+        'USER': os.getenv('MYSQL_USER'),          # Railway provides this
+        'PASSWORD': os.getenv('MYSQL_PASSWORD'),  # Railway provides this
+        'HOST': os.getenv('MYSQL_HOST'),          # Railway provides this (private domain)
+        'PORT': os.getenv('MYSQL_PORT', '3306'),  # Default to 3306 if not set
     }
 }
 
